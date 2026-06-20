@@ -1,6 +1,6 @@
 pipeline {
 
-    agent none
+    agent any
 
     tools {
         jdk 'JDK17'
@@ -10,32 +10,35 @@ pipeline {
     stages {
 
         stage('Checkout') {
-            agent any
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
+                git 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
             }
         }
 
         stage('Build') {
-            agent any
             steps {
-                sh 'mvn clean package'
+                dir('Deepak') {
+                    sh 'pwd'
+                    sh 'ls -lrt'
+                    sh 'mvn clean package'
+                }
             }
         }
 
         stage('Test') {
-            agent any
             steps {
-                sh 'java -jar target/hello-world-1.0.jar'
+                dir('Deepak') {
+                    sh 'java -jar target/hello-world-1.0.jar'
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline Executed Successfully'
+            echo 'Pipeline Successful'
         }
+
         failure {
             echo 'Pipeline Failed'
         }
