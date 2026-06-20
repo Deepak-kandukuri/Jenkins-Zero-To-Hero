@@ -20,7 +20,7 @@ pipeline {
             steps {
                 dir('Deepak') {
                     sh 'pwd'
-                    sh 'ls -lrt'
+                    sh 'find .'
                     sh 'mvn clean package'
                 }
             }
