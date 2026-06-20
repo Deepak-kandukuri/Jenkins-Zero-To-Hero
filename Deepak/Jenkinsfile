@@ -1,0 +1,73 @@
+pipeline {
+
+    agent none
+
+    tools {
+        jdk 'JDK17'
+        maven 'Maven3'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            agent any
+
+            steps {
+                git 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
+            }
+        }
+
+        stage('Build') {
+            agent {
+                label 'java-agent'
+            }
+
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Test') {
+            agent {
+                label 'java-agent'
+            }
+
+            steps {
+                sh 'java -jar target/hello-world-1.0.jar'
+            }
+        }
+
+        stage('Build Docker Image') {
+            agent {
+                label 'docker-agent'
+            }
+
+            steps {
+                sh 'docker build -t hello-world:${BUILD_NUMBER} .'
+            }
+        }
+
+        stage('Run Container') {
+            agent {
+                label 'docker-agent'
+            }
+
+            steps {
+                sh '''
+                docker rm -f hello-world || true
+                docker run -d --name hello-world -p 8080:8080 hello-world:${BUILD_NUMBER}
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline Executed Successfully'
+        }
+
+        failure {
+            echo 'Pipeline Failed'
+        }
+    }
+}
