@@ -7,6 +7,11 @@ pipeline {
         maven 'Maven3'
     }
 
+    environment {
+        IMAGE_NAME = "hello-world"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -19,8 +24,6 @@ pipeline {
         stage('Build') {
             steps {
                 dir('Deepakk') {
-                    sh 'pwd'
-                    sh 'find .'
                     sh 'mvn clean package'
                 }
             }
@@ -31,6 +34,33 @@ pipeline {
                 dir('Deepakk') {
                     sh 'java -jar target/hello-world-1.0.jar'
                 }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('Deepakk') {
+                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                }
+            }
+        }
+
+        stage('Run Docker Container') {
+            steps {
+                sh '''
+                docker rm -f hello-container || true
+
+                docker run -d \
+                  --name hello-container \
+                  ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Verify Container') {
+            steps {
+                sh 'docker ps -a'
+                sh 'docker logs hello-container'
             }
         }
     }
