@@ -18,7 +18,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir('Deepak') {
+                dir('Deepakk') {
                     sh 'pwd'
                     sh 'find .'
                     sh 'mvn clean package'
@@ -28,7 +28,7 @@ pipeline {
 
         stage('Run Application') {
             steps {
-                dir('Deepak') {
+                dir('Deepakk') {
                     sh 'java -jar target/hello-world-1.0.jar'
                 }
             }
