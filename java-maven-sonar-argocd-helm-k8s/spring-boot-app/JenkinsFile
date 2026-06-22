@@ -25,14 +25,28 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
+                    url: 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
             }
         }
 
         stage('Build and Test') {
             steps {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    sh 'mvn clean package'
+                    sh '''
+                        echo "Current Directory:"
+                        pwd
+
+                        echo "Files:"
+                        ls -la
+
+                        echo "Java Version:"
+                        java -version
+
+                        echo "Maven Version:"
+                        mvn -version
+
+                        mvn clean package
+                    '''
                 }
             }
         }
@@ -40,16 +54,15 @@ pipeline {
         stage('Static Code Analysis') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'sonarqube',
-                    variable: 'SONAR_AUTH_TOKEN')
+                    string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')
                 ]) {
 
                     dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
 
                         sh '''
-                        mvn sonar:sonar \
-                        -Dsonar.login=$SONAR_AUTH_TOKEN \
-                        -Dsonar.host.url=$SONAR_URL
+                            mvn sonar:sonar \
+                            -Dsonar.login=$SONAR_AUTH_TOKEN \
+                            -Dsonar.host.url=$SONAR_URL
                         '''
                     }
                 }
@@ -62,7 +75,7 @@ pipeline {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
 
                     sh """
-                    docker build -t ${DOCKER_IMAGE} .
+                        docker build -t ${DOCKER_IMAGE} .
                     """
                 }
             }
@@ -85,28 +98,43 @@ pipeline {
         }
 
         stage('Update Deployment Manifest') {
+
             steps {
 
                 withCredentials([
-                    string(credentialsId: 'github',
-                    variable: 'GITHUB_TOKEN')
+                    string(credentialsId: 'github', variable: 'GITHUB_TOKEN')
                 ]) {
 
                     sh """
-                    git config user.email "kandukuri.deepak009@gmail.com"
-                    git config user.name "Deepak kandukuri"
+                        git config --global user.email "kandukuri.deepak009@gmail.com"
+                        git config --global user.name "Deepak Kandukuri"
 
-                    sed -i 's/replaceImageTag/${BUILD_NUMBER}/g' \
-                    java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" \
+                        java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
-                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
-                    git commit -m "Update image tag to ${BUILD_NUMBER}" || true
+                        git commit -m "Update image tag to ${BUILD_NUMBER}" || true
 
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
+                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
                     """
                 }
             }
+        }
+    }
+
+    post {
+
+        success {
+            echo 'Pipeline executed successfully.'
+        }
+
+        failure {
+            echo 'Pipeline failed.'
+        }
+
+        always {
+            cleanWs()
         }
     }
 }
