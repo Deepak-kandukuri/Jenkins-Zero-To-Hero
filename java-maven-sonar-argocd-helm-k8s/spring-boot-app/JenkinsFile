@@ -3,24 +3,18 @@ pipeline {
     agent {
         docker {
             image 'deepakf5/jenkins-agent:v1'
-            args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock'
+            args '--user root --entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock'
             reuseNode true
         }
     }
 
     stages {
-
         stage('Test Container') {
             steps {
                 sh '''
-                    echo "START"
-                    pwd
-                    ls -la
-                    java -version
-                    mvn -version
-                    git --version
+                    echo START
                     docker version
-                    echo "END"
+                    echo END
                 '''
             }
         }
