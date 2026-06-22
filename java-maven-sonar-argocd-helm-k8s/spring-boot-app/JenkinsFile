@@ -1,5 +1,4 @@
 pipeline {
-
     agent {
         docker {
             image 'deepakf5/jenkins-agent:v1'
@@ -7,37 +6,25 @@ pipeline {
         }
     }
 
-    options {
-        disableConcurrentBuilds()
-    }
-
     stages {
 
-        stage('Diagnostics') {
+        stage('Checkout') {
             steps {
-                sh '''
-                    echo "===== START ====="
-                    whoami
-                    pwd
-                    ls -la
-                    echo "Java Version"
-                    java -version
-                    echo "Maven Version"
-                    mvn -version
-                    echo "Git Version"
-                    git --version
-                    echo "Docker Version"
-                    docker version
-                    echo "===== END ====="
-                '''
+                git branch: 'main',
+                url: 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
             }
         }
 
-    }
-
-    post {
-        always {
-            cleanWs()
+        stage('Build Test') {
+            steps {
+                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
+                    sh '''
+                        pwd
+                        ls -la
+                        mvn clean package
+                    '''
+                }
+            }
         }
     }
 }
