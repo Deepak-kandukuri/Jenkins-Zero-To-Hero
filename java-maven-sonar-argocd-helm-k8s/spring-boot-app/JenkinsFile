@@ -3,97 +3,41 @@ pipeline {
     agent {
         docker {
             image 'deepakf5/jenkins-agent:v1'
-            args '''
-                --user root \
-                -v /var/run/docker.sock:/var/run/docker.sock \
-                -v /tmp:/tmp
-            '''
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp'
         }
     }
 
-    environment {
-        IMAGE_NAME = "hello-world"
-        IMAGE_TAG  = "${BUILD_NUMBER}"
+    options {
+        disableConcurrentBuilds()
     }
 
     stages {
 
-        stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
-
-        stage('Checkout') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
-            }
-        }
-
         stage('Diagnostics') {
             steps {
                 sh '''
+                    echo "===== START ====="
                     whoami
                     pwd
                     ls -la
+                    echo "Java Version"
                     java -version
+                    echo "Maven Version"
                     mvn -version
+                    echo "Git Version"
                     git --version
+                    echo "Docker Version"
                     docker version
+                    echo "===== END ====="
                 '''
             }
         }
 
-        stage('Build and Test') {
-            steps {
-                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    sh 'mvn clean package'
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    sh '''
-                        docker build -t deepakf5/hello-world:${BUILD_NUMBER} .
-                    '''
-                }
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'docker',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
-
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-
-                        docker push deepakf5/hello-world:${BUILD_NUMBER}
-                    '''
-                }
-            }
-        }
     }
 
     post {
         always {
             cleanWs()
-        }
-
-        success {
-            echo 'Pipeline completed successfully.'
-        }
-
-        failure {
-            echo 'Pipeline failed.'
         }
     }
 }
