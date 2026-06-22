@@ -4,6 +4,7 @@ pipeline {
         docker {
             image 'deepakf5/jenkins-agent:v1' 
             args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock'
+            reuseNode true
         }
     }
 
