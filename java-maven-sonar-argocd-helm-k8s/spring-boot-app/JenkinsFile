@@ -2,7 +2,7 @@ pipeline {
 
     agent {
         docker {
-            image 'deepakf5/jenkins-agent:v2'
+            image 'deepakf5/jenkins-agent:v3'
             args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
