@@ -46,7 +46,7 @@ pipeline {
                         vaultCredentialId: 'vault-approle'
                     ],
                     vaultSecrets: [[
-                        path: 'secret/data/jenkins/sonar',
+                        path: 'secret/jenkins/sonar',
                         secretValues: [
                             [envVar: 'SONAR_AUTH_TOKEN', vaultKey: 'token']
                         ]
