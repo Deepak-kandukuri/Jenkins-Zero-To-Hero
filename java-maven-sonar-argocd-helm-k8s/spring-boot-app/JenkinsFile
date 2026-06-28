@@ -73,7 +73,7 @@ pipeline {
                         vaultCredentialId: 'vault-approle'
                     ],
                     vaultSecrets: [[
-                        path: 'secret/data/jenkins/docker',
+                        path: 'secret/jenkins/docker',
                         secretValues: [
                             [envVar: 'DOCKER_USERNAME', vaultKey: 'username'],
                             [envVar: 'DOCKER_PASSWORD', vaultKey: 'password']
@@ -106,7 +106,7 @@ pipeline {
                         vaultCredentialId: 'vault-approle'
                     ],
                     vaultSecrets: [[
-                        path: 'secret/data/jenkins/github',
+                        path: 'secret/jenkins/github',
                         secretValues: [
                             [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
                         ]
