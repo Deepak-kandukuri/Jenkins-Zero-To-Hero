@@ -7,8 +7,8 @@ pipeline {
     }
 
     environment {
-        SONAR_URL   = "http://3.208.10.179:9000"
-        VAULT_ADDR  = "http://3.95.196.184:8200"
+        SONAR_URL   = "http://54.89.72.95:9000"
+        VAULT_ADDR  = "http://54.226.80.169:8200"
         DOCKER_IMAGE = "deepakf5/ultimate-cicd:${BUILD_NUMBER}"
         GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
         GIT_USER_NAME = "Deepak-kandukuri"
