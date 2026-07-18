@@ -7,8 +7,8 @@ pipeline {
     }
 
     environment {
-        SONAR_URL   = "http://100.26.145.95:9000"
-        VAULT_ADDR  = "http://18.234.113.22:8200"
+        SONAR_URL    = "http://100.26.145.95:9000"
+        VAULT_ADDR   = "http://18.234.113.22:8200"
         DOCKER_IMAGE = "deepakf5/ultimate-cicd:${BUILD_NUMBER}"
         GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
         GIT_USER_NAME = "Deepak-kandukuri"
@@ -25,7 +25,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
+                url: 'https://github.com/Deepak-kandukuri/Jenkins-Zero-To-Hero.git'
             }
         }
 
@@ -37,34 +37,91 @@ pipeline {
             }
         }
 
-        stage('Static Code Analysis') {
-            steps {
+        stage('Security and Quality Scans') {
 
-                withVault(
-                    configuration: [
-                        vaultUrl: "${VAULT_ADDR}",
-                        vaultCredentialId: 'vault-approle'
-                    ],
-                    vaultSecrets: [[
-                        path: 'secret/jenkins/sonar',
-                        secretValues: [
-                            [envVar: 'SONAR_AUTH_TOKEN', vaultKey: 'token']
-                        ]
-                    ]]
-                ) {
+            parallel {
 
-                    sh '''
-                    cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                stage('SonarQube Scan') {
+                    steps {
 
-                    mvn sonar:sonar \
-                      -Dsonar.login=$SONAR_AUTH_TOKEN \
-                      -Dsonar.host.url=$SONAR_URL
-                    '''
+                        withVault(
+                            configuration: [
+                                vaultUrl: "${VAULT_ADDR}",
+                                vaultCredentialId: 'vault-approle'
+                            ],
+                            vaultSecrets: [[
+                                path: 'secret/jenkins/sonar',
+                                secretValues: [
+                                    [envVar: 'SONAR_AUTH_TOKEN',
+                                     vaultKey: 'token']
+                                ]
+                            ]]
+                        ) {
+
+                            sh '''
+                            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+
+                            mvn sonar:sonar \
+                            -Dsonar.login=$SONAR_AUTH_TOKEN \
+                            -Dsonar.host.url=$SONAR_URL
+                            '''
+                        }
+                    }
+                }
+
+                stage('OWASP Dependency Check') {
+                    steps {
+
+                        dependencyCheck additionalArguments: '''
+                        --scan java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                        --format XML
+                        --format HTML
+                        ''',
+                        odcInstallation: 'DC'
+
+                        dependencyCheckPublisher pattern:
+                        '**/dependency-check-report.xml'
+                    }
+                }
+
+                stage('Trivy Filesystem Scan') {
+                    steps {
+
+                        sh '''
+                        trivy fs \
+                        --format table \
+                        --output trivy-fs-report.txt .
+                        '''
+                    }
                 }
             }
         }
 
-        stage('Build and Push Docker Image') {
+        stage('Build Docker Image') {
+            steps {
+
+                sh '''
+                cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+
+                docker build -t ${DOCKER_IMAGE} .
+                '''
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+
+                sh '''
+                trivy image \
+                --severity HIGH,CRITICAL \
+                --format table \
+                --output trivy-image-report.txt \
+                ${DOCKER_IMAGE}
+                '''
+            }
+        }
+
+        stage('Push Docker Image') {
             steps {
 
                 withVault(
@@ -75,19 +132,18 @@ pipeline {
                     vaultSecrets: [[
                         path: 'secret/jenkins/docker',
                         secretValues: [
-                            [envVar: 'DOCKER_USERNAME', vaultKey: 'username'],
-                            [envVar: 'DOCKER_PASSWORD', vaultKey: 'password']
+                            [envVar: 'DOCKER_USERNAME',
+                             vaultKey: 'username'],
+                            [envVar: 'DOCKER_PASSWORD',
+                             vaultKey: 'password']
                         ]
                     ]]
                 ) {
 
                     sh '''
                     echo "$DOCKER_PASSWORD" | \
-                    docker login -u "$DOCKER_USERNAME" --password-stdin
-
-                    cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-
-                    docker build -t ${DOCKER_IMAGE} .
+                    docker login -u "$DOCKER_USERNAME" \
+                    --password-stdin
 
                     docker push ${DOCKER_IMAGE}
 
@@ -108,23 +164,32 @@ pipeline {
                     vaultSecrets: [[
                         path: 'secret/jenkins/github',
                         secretValues: [
-                            [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
+                            [envVar: 'GITHUB_TOKEN',
+                             vaultKey: 'token']
                         ]
                     ]]
                 ) {
 
                     sh '''
-                    git config user.email "kandukuri.deepak009@gmail.com"
-                    git config user.name "Deepak Kandukuri"
+                    git config user.email \
+                    "kandukuri.deepak009@gmail.com"
 
-                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" \
+                    git config user.name \
+                    "Deepak Kandukuri"
+
+                    sed -i \
+                    "s/replaceImageTag/${BUILD_NUMBER}/g" \
                     java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
-                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                    git add \
+                    java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
-                    git commit -m "Update deployment image to version ${BUILD_NUMBER}" || true
+                    git commit -m \
+                    "Update deployment image to version ${BUILD_NUMBER}" || true
 
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                    git push \
+                    https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} \
+                    HEAD:main
                     '''
                 }
             }
@@ -132,7 +197,16 @@ pipeline {
     }
 
     post {
+
         always {
+
+            archiveArtifacts artifacts: '''
+            dependency-check-report.xml,
+            dependency-check-report.html,
+            trivy-fs-report.txt,
+            trivy-image-report.txt
+            ''', allowEmptyArchive: true
+
             cleanWs()
         }
 
